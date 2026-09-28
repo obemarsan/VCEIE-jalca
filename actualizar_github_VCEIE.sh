@@ -7,7 +7,8 @@
 # =============================================================================
 set -euo pipefail
 REPO="$HOME/Desktop/ACADEMOS/ECOSISTEMAS/analisis_VCEIE/pipeline_VCEIE"
-ENVIO="$HOME/Desktop/ACADEMOS/ECOSISTEMAS/analisis_VCEIE/envio_SouthSustainability/figuras_V10"
+ENVIO="$HOME/Desktop/ACADEMOS/ECOSISTEMAS/analisis_VCEIE/envio_SouthSustainability/figuras_V11"
+SHP="$HOME/Desktop/ACADEMOS/shapefiles"
 cd "$REPO"
 
 echo "== 1. Comprobaciones =="
@@ -20,6 +21,7 @@ echo "== 2. Ejecutando el pipeline =="
 chmod +x run.sh
 rm -rf outputs
 ./run.sh
+Rscript figura1_mapa.R --shp="$SHP" --lat=-7.18278 --lon=-78.17033 --out=outputs
 
 echo "== 3. Verificando resultados contra el manuscrito =="
 grep -q "VECE al 100 % = 10 612 337,58" outputs/resultados_VCEIE.txt \
@@ -36,13 +38,13 @@ for f in figuras_tablas_ECOSISTEMAS.R generar_VCEIE.sh .pipeline_VCEIE.R; do
   git ls-files --error-unmatch "$f" >/dev/null 2>&1 && git rm -q "$f" && echo "Eliminado del repo: $f"
   [ -f "$f" ] && mv "$f" "$f.antiguo" || true
 done
-git add README.md LICENSE .gitignore datos_VCEIE.csv params_VCEIE.csv pipeline_VCEIE.R run.sh actualizar_github_VCEIE.sh
+git add README.md LICENSE .gitignore datos_VCEIE.csv params_VCEIE.csv pipeline_VCEIE.R figura1_mapa.R run.sh actualizar_github_VCEIE.sh
 git status --short
 echo
 read -r -p "¿Publicar en GitHub (commit + push + versión v1.0.0)? [s/N] " ok
 [ "$ok" = "s" ] || [ "$ok" = "S" ] || { echo "Cancelado. Nada se subió."; exit 0; }
 
-git commit -m "Pipeline para South Sustainability: figuras 2-7 a 600 ppp, coma decimal, individuos, 8 autores"
+git commit -m "Pipeline para South Sustainability: figuras 1-7 a 600 ppp, coma decimal, individuos, 8 autores"
 git push origin HEAD
 if git rev-parse v1.0.0 >/dev/null 2>&1; then
   echo "AVISO: la etiqueta v1.0.0 ya existe; no se reescribe."

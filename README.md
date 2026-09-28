@@ -5,7 +5,7 @@ Datos crudos y código en R que reproducen íntegramente los resultados, las tab
 > **Valoración económica del impacto ecológico mediante un modelo densidad–área de la fauna voladora del ecosistema jalca, Perú**
 > enviado a *South Sustainability* (Universidad Científica del Sur).
 
-La Figura 1 (mapa de ubicación) se elaboró en un sistema de información geográfica y no forma parte de este pipeline.
+La Figura 1 (mapa de ubicación) se genera con `figura1_mapa.R` a partir de los límites político-administrativos del INEI (departamentos, provincias y distritos), que no se redistribuyen en este repositorio; el área de estudio se ubica en el distrito de Gregorio Pita, provincia de San Marcos, Cajamarca (7,18278° S; 78,17033° O).
 
 ## Modelo
 
@@ -20,7 +20,7 @@ donde `S` es la superficie (m²), `P` la densidad media (animales/ha) y `M` la c
 ## Requisitos
 
 - R ≥ 4.3 (resultados del manuscrito generados con **R 4.6.0**; ver `outputs/sessionInfo.txt` tras la corrida).
-- Paquetes `ggplot2`, `scales` y `writexl` (se instalan solos en la primera corrida).
+- Paquetes `ggplot2`, `scales` y `writexl`; para la Figura 1, además `sf`, `patchwork` y `ggrepel` (se instalan solos en la primera corrida).
 
 ## Contenido
 
@@ -29,6 +29,7 @@ donde `S` es la superficie (m²), `P` la densidad media (animales/ha) y `M` la c
 | `datos_VCEIE.csv` | Datos crudos: `grupo, S (m²), P (animales/ha)` |
 | `params_VCEIE.csv` | Parámetros por grupo: `grupo, M, individuos, precio (S/), Smax (m²)` |
 | `pipeline_VCEIE.R` | Pipeline completo (ajuste, valoración, tablas y figuras) |
+| `figura1_mapa.R` | Figura 1: mapa de ubicación (requiere los shapefiles del INEI) |
 | `run.sh` | Ejecución por terminal |
 
 ## Uso
@@ -40,6 +41,8 @@ Rscript pipeline_VCEIE.R --out=outputs --area=8218.23 --factor=0.76 --veces=2
 ```
 
 Genera en `outputs/`:
+
+- `Figura1_mapa_ubicacion` (con `Rscript figura1_mapa.R --shp=<carpeta_INEI> --lat=-7.18278 --lon=-78.17033`).
 
 - `Figura2_ajuste_G1` … `Figura4_ajuste_G3`: ajuste densidad–área por grupo.
 - `Figura5_dPdS_G1` … `Figura7_dPdS_G3`: tasa de cambio dP/dS por grupo.
