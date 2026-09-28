@@ -50,7 +50,8 @@ if (!is.na(opt$poligono)) {
   message("AVISO: sin coordenadas ni polígono; el panel C se dibuja sin el área de estudio.")
 }
 if (!is.null(area)) {
-  d_hit <- dist$DISTRITO[lengths(st_intersects(dist, st_centroid(st_union(area)))) > 0]
+  ctr <- suppressWarnings(suppressMessages(st_centroid(st_union(area))))
+  d_hit <- dist$DISTRITO[lengths(suppressMessages(st_intersects(dist, ctr))) > 0]
   message("El área de estudio cae en el distrito: ", paste(d_hit, collapse = ", "))
   if (length(d_hit) && !opt$dist %in% d_hit)
     warning("¡El punto NO cae en ", opt$dist, "! Revisa coordenadas o --dist.")
@@ -137,7 +138,7 @@ if (!is.null(area)) {
   pC <- pC + if (inherits(st_geometry(area), "sfc_POINT"))
     list(geom_sf(data = area, shape = 23, size = 2.6, fill = "#D55E00", colour = "black", stroke = 0.4),
          annotate("label", x = st_coordinates(area)[1, 1] - 0.012, y = st_coordinates(area)[1, 2] + 0.03,
-                  label = "Área de estudio", size = 1.8, hjust = 1, label.size = 0.15,
+                  label = "Área de estudio", size = 1.8, hjust = 1,
                   label.padding = unit(0.8, "mm"), fill = "white"))
   else geom_sf(data = area, fill = "#D55E00", colour = "black", alpha = 0.8, linewidth = 0.3)
 }
