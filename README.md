@@ -65,4 +65,4 @@ Código bajo licencia MIT (ver `LICENSE`). Los datos se distribuyen para uso aca
 
 ## Cómo citar
 
-> Marín-Machuca, O., Vargas Ayala, J., Daga López, R. A., Pisco Moro, J. F., Alvarado Zambrano, F. A., Vértiz Osores, J. J., Cucho Flores, R. R. and Marín-Sánchez, O. (2026) *VCEIE-jalca: datos y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v1.1.0) [Software]. GitHub. Disponible en: https://github.com/obemarsan/VCEIE-jalca
+> Marín-Machuca, O., Vargas Ayala, J., Daga López, R. A., Cabeza Molina, L. F., Alvarado Zambrano, F. A., Vértiz Osores, J. J., Cucho Flores, R. R. and Marín-Sánchez, O. (2026) *VCEIE-jalca: datos y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v1.1.0) [Software]. GitHub. Disponible en: https://github.com/obemarsan/VCEIE-jalca
