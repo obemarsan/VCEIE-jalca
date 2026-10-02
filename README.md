@@ -1,5 +1,7 @@
 # VCEIE-jalca — serie de entrada y código
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23104526.svg)](https://doi.org/10.5281/zenodo.23104526)
+
 Código en R que reproduce íntegramente los resultados, las tablas y las figuras del manuscrito
 
 > **Valoración económica del impacto ecológico mediante un modelo densidad–área de saturación: aplicación ilustrativa a la fauna voladora del ecosistema jalca, Perú**
@@ -78,4 +80,4 @@ El código se distribuye bajo licencia MIT (ver `LICENSE`). La serie de entrada 
 
 ## Cómo citar
 
-> Marín-Machuca, O., Vargas Ayala, J., Daga López, R. A., Cabeza Molina, L. F., Alvarado Zambrano, F. A., Vértiz Osores, J. J., Cucho Flores, R. R. and Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v2.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.[PENDIENTE]
+> Marín-Machuca, O., Daga López, R. A., Vargas Ayala, J., Alvarado Zambrano, F. A., Cabeza-Molina, L. F., Vértiz Osores, J. J., Cucho Flores, R. R. y Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v2.1.1) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23104526
