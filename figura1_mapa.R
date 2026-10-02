@@ -16,7 +16,7 @@
 #   --poligono=<arch>  límite del área de estudio (.shp, .kml, .gpkg); opcional,
 #                      tiene prioridad sobre lat/lon
 #   --out=<dir>        carpeta de salida [outputs]
-# SALIDA: outputs/Figura1_mapa_ubicacion.png y .tiff (600 ppp, 16 × 9 cm)
+# SALIDA: outputs/Figura1_mapa_ubicacion.png y .tiff (600 ppp, 19 × 10.7 cm)
 # Los shapefiles del INEI no se incluyen en el repositorio (ver README).
 # =============================================================================
 
@@ -149,7 +149,7 @@ fig <- (pA | pB | pC) + plot_layout(widths = c(0.75, 0.9, 1.35)) +
   plot_annotation(tag_levels = "A")
 for (ext in c("png", "tiff")) {
   args <- list(filename = file.path(opt$out, paste0("Figura1_mapa_ubicacion.", ext)),
-               plot = fig, width = 16, height = 9, units = "cm", dpi = 600, bg = "white")
+               plot = fig, width = 19, height = 10.7, units = "cm", dpi = 600, bg = "white")
   if (ext == "tiff") args$compression <- "lzw"
   do.call(ggsave, args)
 }

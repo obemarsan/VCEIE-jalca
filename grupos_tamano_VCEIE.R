@@ -22,8 +22,8 @@
 #   especies_poligono_masa.csv   especie, registros, masa, hábitat, grupo
 #   revisar_manual.csv           nombres sin coincidencia exacta en AVONET
 #   resumen_grupos.csv           especies y masa mediana por grupo
-#   Tablas_grupos_tamano.xlsx    Tabla 3 del manuscrito + anexos (resumen, especies, nombres)
-#   Figura9_masa_corporal.png/.tiff  (especies de hábitats abiertos)
+#   Tablas_grupos_tamano.xlsx    Tabla 1 del manuscrito + anexos (resumen, especies, nombres)
+#   Figura2_masa_corporal.png/.tiff  (especies de hábitats abiertos)
 # =============================================================================
 suppressPackageStartupMessages({
   for (p in c("readxl", "ggplot2", "scales", "writexl"))
@@ -62,9 +62,9 @@ lista <- lista[lista$nreg >= MINREG, ]
 message("Especies (binomios) en la lista GBIF: ", nrow(lista))
 
 ## ---- 2. AVONET y cruce de nombres ---------------------------------------------
-eb <- read_excel(opt$avonet, sheet = "AVONET2_eBird")
-bl <- read_excel(opt$avonet, sheet = "AVONET1_BirdLife")
-cw <- read_excel(opt$avonet, sheet = "BirdLife-eBird crosswalk")
+eb <- read_excel(opt$avonet, sheet = "AVONET2_eBird", na = c("", "NA"))
+bl <- read_excel(opt$avonet, sheet = "AVONET1_BirdLife", na = c("", "NA"))
+cw <- read_excel(opt$avonet, sheet = "BirdLife-eBird crosswalk", na = c("", "NA"))
 cols <- c("Mass", "Habitat", "Trophic.Niche", "Primary.Lifestyle", "Migration")
 i_eb <- match(lista$especie, eb$Species2)
 i_bl <- match(lista$especie, bl$Species1)
@@ -128,9 +128,9 @@ resumen <- do.call(rbind, lapply(list(c("grupo_fijo", "todas"), c("grupo_tercil"
 }))
 write.csv(resumen, file.path(opt$out, "resumen_grupos.csv"), row.names = FALSE)
 
-# Tabla 3 del manuscrito y anexos en Excel
+# Tabla 1 del manuscrito y anexos en Excel
 t3 <- resumen[resumen$criterio == "grupo_fijo" & resumen$especies_incluidas == "abiertos", ]
-dec1 <- function(x) formatC(x, format = "f", digits = 1, big.mark = " ", decimal.mark = ",")
+dec1 <- function(x) formatC(x, format = "f", digits = 1, big.mark = "")   # punto decimal (ECOSISTEMAS)
 T3 <- data.frame(
   Grupo = c("1 (grande)", "2 (mediano)", "3 (pequeño)"),
   `Masa (g)` = c(paste0(">= ", C2), paste0(C1, "–", C2), paste0("< ", C1)),
@@ -139,7 +139,7 @@ T3 <- data.frame(
     paste0(dec1(masa_mediana_g), " (", dec1(masa_min_g), "–", dec1(masa_max_g), ")")),
   `Registros GBIF` = t3$registros_GBIF[match(c("Grande", "Mediano", "Pequeño"), t3$grupo)],
   check.names = FALSE)
-write_xlsx(list(Tabla3_grupos_tamano = T3, TS_resumen_criterios = resumen,
+write_xlsx(list(Tabla1_grupos_tamano = T3, TS_resumen_criterios = resumen,
                 TS_especies = lista, TS_revision_nombres = revisar),
            file.path(opt$out, "Tablas_grupos_tamano.xlsx"))
 
@@ -147,7 +147,8 @@ ref <- c("Coragyps atratus", "Falco sparverius", "Spinus magellanicus")
 refs <- lista[lista$especie %in% ref, c("especie", "Mass", "grupo_fijo", "grupo_tercil")]
 
 ## ---- 4. Figura ------------------------------------------------------------------
-dec <- function(x, d = 0) formatC(x, format = "f", digits = d, big.mark = " ", decimal.mark = ",")
+dec <- function(x, d = 0) ifelse(abs(x) >= 10000, formatC(x, format = "f", digits = d, big.mark = " "),
+                                  formatC(x, format = "f", digits = d, big.mark = ""))
 g9 <- ggplot(lista[ok & lista$habitat_abierto, ], aes(Mass)) +
   geom_histogram(bins = 30, fill = "grey75", colour = "grey35", linewidth = 0.2) +
   geom_vline(xintercept = c(C1, C2), linetype = "dashed", colour = "grey20") +
@@ -157,12 +158,12 @@ g9 <- ggplot(lista[ok & lista$habitat_abierto, ], aes(Mass)) +
             vjust = 0.4, size = 2.8, fontface = "italic", inherit.aes = FALSE) +
   annotate("text", x = sqrt(c(min(lista$Mass[ok]) * C1, C1 * C2, C2 * max(lista$Mass[ok]))),
            y = Inf, vjust = 1.6, size = 3.2, label = c("Pequeño", "Mediano", "Grande")) +
-  scale_x_log10(labels = label_number(decimal.mark = ",", big.mark = " ")) +
+  scale_x_log10(labels = function(x) dec(x, 0)) +
   labs(x = "Masa corporal (g, escala logarítmica)", y = "Número de especies") +
   theme_bw(base_size = 11) + theme(panel.grid.minor = element_blank())
 for (ext in c("png", "tiff")) {
-  a <- list(filename = file.path(opt$out, paste0("Figura9_masa_corporal.", ext)), plot = g9,
-            width = 16, height = 10, units = "cm", dpi = 600, bg = "white")
+  a <- list(filename = file.path(opt$out, paste0("Figura2_masa_corporal.", ext)), plot = g9,
+            width = 19, height = 10, units = "cm", dpi = 600, bg = "white")
   if (ext == "tiff") a$compression <- "lzw"
   do.call(ggsave, a)
 }

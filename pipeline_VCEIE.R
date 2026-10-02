@@ -25,21 +25,21 @@
 #   ./run.sh
 #
 # SALIDAS (carpeta outputs/):
-#   Figura2_ajuste_G1 … Figura4_ajuste_G3   (ajuste densidad–área)
-#   Figura5_dPdS_G1   … Figura7_dPdS_G3     (tasa de cambio dP/dS)
-#   Figura8_sensibilidad                    (tornado, sensibilidad local)
-#     cada una en PNG y TIFF (LZW), 600 ppp
+#   Figura3_ajuste_dPdS   (A–C ajuste densidad–área; D–F tasa de cambio dP/dS)
+#   Figura4_sensibilidad  (tornado, sensibilidad local)
+#     PNG y TIFF (LZW), 600 ppp, 19 cm de ancho
+#   (Figura 1: figura1_mapa.R; Figura 2: grupos_tamano_VCEIE.R)
 #   Tablas_VCEIE.xlsx       (serie de entrada, parámetros con IC 95 %,
 #                            valoración, sensibilidad, Monte Carlo, residuos)
 #   resultados_VCEIE.txt    (resumen numérico)
 #   sessionInfo.txt         (versión de R y paquetes usados)
 #
-# Formato: coma decimal (texto en español), paleta Okabe-Ito apta para
-# daltonismo. La Figura 1 (mapa de ubicación) se genera con figura1_mapa.R.
+# Formato ECOSISTEMAS: punto decimal, millares con espacio desde 10 000;
+# paleta Okabe-Ito apta para daltonismo. La Figura 1 (mapa de ubicación) se genera con figura1_mapa.R.
 # =============================================================================
 
 ## ---- 0. Paquetes -----------------------------------------------------------
-req <- c("ggplot2", "scales", "writexl")
+req <- c("ggplot2", "scales", "writexl", "patchwork")
 faltan <- req[!vapply(req, requireNamespace, logical(1), quietly = TRUE)]
 if (length(faltan)) {
   message("Instalando paquetes faltantes: ", paste(faltan, collapse = ", "))
@@ -162,11 +162,11 @@ stopifnot(abs(vece100(base$M, base$n, base$precio) - VECE_100) < 1e-6)
 # mínimo admisible (densidad máxima de la serie + 0,1 animales/ha), porque con
 # M <= max(P) la linealización queda indefinida.
 M_lo <- pmax(0.8 * par$M, Pmax + 0.1)
-fmt1 <- function(x) formatC(x, format = "f", digits = 1, decimal.mark = ",")
+fmt1 <- function(x) formatC(x, format = "f", digits = 1)
 oat <- data.frame(
   Parametro = c("Capacidad de carga (M)", "Precio por individuo",
                 "Individuos de referencia (n)", "Fracción de evaluación (2/3)",
-                "Factor de representatividad (0,76)", "Área de extrapolación"),
+                "Factor de representatividad (0.76)", "Área de extrapolación"),
   Bajo = c(paste0("M mínimo admisible (", paste(fmt1(M_lo), collapse = "; "), ")"),
            "-20 %", "-20 %", "-20 %", "-20 %", "-20 %"),
   Alto = rep("+20 %", 6),
@@ -191,7 +191,7 @@ oat <- oat[order(-oat$Rango_pct), ]
 ## ---- 5. Incertidumbre conjunta (Monte Carlo) ---------------------------------
 # Muestreo uniforme e independiente de los parámetros supuestos:
 #   M_g ~ U(max(P_g) + 0,1 ; 1,2 M_g);  precio_g, n_g ~ U(0,8 ; 1,2) x base;
-#   fracción ~ U(0,8 ; 1,2) x 2/3;  factor ~ U(0,8 ; 1,2) x 0,76.
+#   fracción ~ U(0.8 ; 1.2) x 2/3;  factor ~ U(0.8 ; 1.2) x 0.76.
 # Área y frecuencia se mantienen fijas (definen el escenario; su efecto es
 # proporcional). Importancia: correlación de rangos de Spearman con VECE_100.
 set.seed(SEED)
@@ -250,8 +250,8 @@ T3 <- data.frame(
   Concepto = c("VEIE total (S/ por ha)", "Área de extrapolación (ha)", "Frecuencia anual",
                "VECE bruto (S/ por año)", "Factor de representatividad",
                "VECE al 100 % (S/ por año)",
-               "Monte Carlo: percentil 2,5", "Monte Carlo: mediana",
-               "Monte Carlo: percentil 97,5"),
+               "Monte Carlo: percentil 2.5", "Monte Carlo: mediana",
+               "Monte Carlo: percentil 97.5"),
   Valor = c(r3(VEIE_tot), AREA_HA, VECES, round(VECE_raw, 2), FACTOR,
             round(VECE_100, 2), round(unname(qMC), 2)))
 
@@ -270,25 +270,33 @@ TS1 <- do.call(rbind, lapply(grupos, function(gn) {
              check.names = FALSE)
 }))
 
-write_xlsx(list(Tabla1_serie_entrada = T1, Tabla2_parametros = T2, TS_valoracion = T3,
-                TS_sensibilidad_Fig8 = T4, TS_residuos = TS1, TS_montecarlo = mc_tab),
+write_xlsx(list(TablaS1_serie_entrada = T1, Tabla2_parametros = T2, TS_valoracion = T3,
+                TS_sensibilidad_Fig4 = T4, TS_residuos = TS1, TS_montecarlo = mc_tab),
            file.path(out, "Tablas_VCEIE.xlsx"))
 
-## ---- 7. Figuras ------------------------------------------------------------
-dec <- function(x, d) formatC(x, format = "f", digits = d, big.mark = " ",
-                              decimal.mark = ",")
-eje <- label_number(decimal.mark = ",", big.mark = " ")
-sci_pm <- function(x) {                       # "1,310 %*% 10^-3" para plotmath
+## ---- 7. Figuras (formato ECOSISTEMAS) ------------------------------------
+# Números: punto decimal; espacio de millares solo desde 10 000 (3000, 27 000)
+dec <- function(x, d) {
+  out <- formatC(x, format = "f", digits = d, big.mark = "")
+  grande <- !is.na(x) & abs(x) >= 10000
+  out[grande] <- formatC(x[grande], format = "f", digits = d, big.mark = " ")
+  out
+}
+eje <- function(x) ifelse(is.na(x), NA, dec(x, ifelse(all(abs(x - round(x)) < 1e-9, na.rm = TRUE), 0,
+                                                      max(0, min(3, ceiling(-log10(min(diff(sort(unique(x)))))))))))
+sci_pm <- function(x) {                       # "1.310 %*% 10^-3" para plotmath
   e <- floor(log10(abs(x))); m <- x / 10^e
   sprintf('"%s" %%*%% 10^%d', dec(m, 3), e)
 }
 col <- c(G1 = "#0072B2", G2 = "#D55E00", G3 = "#009E73")
+nombre_g <- c(G1 = "Grupo 1 (grande)", G2 = "Grupo 2 (mediano)", G3 = "Grupo 3 (pequeño)")
 xs  <- seq(0, 5200, length.out = 500)
-tema <- theme_bw(base_size = 11) +
-  theme(plot.title = element_text(face = "bold", size = 11),
-        panel.grid.minor = element_blank())
+tema <- theme_bw(base_size = 8) +
+  theme(plot.title = element_text(face = "bold", size = 8),
+        panel.grid.minor = element_blank(),
+        plot.tag = element_text(face = "bold", size = 9))
 
-guardar <- function(g, nombre, w = 16, h = 11) {
+guardar <- function(g, nombre, w = 19, h = 12) {
   ggsave(file.path(out, paste0(nombre, ".png")), g,
          width = w, height = h, units = "cm", dpi = 600, bg = "white")
   ggsave(file.path(out, paste0(nombre, ".tiff")), g,
@@ -296,73 +304,50 @@ guardar <- function(g, nombre, w = 16, h = 11) {
          device = "tiff", compression = "lzw")
 }
 
-fig_ajuste <- function(gn, num) {
+panel_ajuste <- function(gn) {
   f <- fits[[gn]]; d <- dat[dat$grupo == gn, ]
   curva <- data.frame(S = xs, P = f$M / (1 + f$A * exp(-f$k * xs)))
-  caja <- c(
-    'italic(P) == frac(italic(M), 1 + italic(A) * e^{-italic(k) * italic(S)})',
-    sprintf('italic(M) == "%s" * "; " ~ italic(A) == "%s"', dec(f$M, 1), dec(f$A, 2)),
-    sprintf('italic(k) == %s ~ m^-2', sci_pm(f$k)),
-    sprintf('italic(r)^2 == "%s %%" * "; " ~ italic(n) == %d', dec(f$R2 * 100, 2), f$n))
-  yc <- f$M * c(0.36, 0.25, 0.16, 0.07)
-  g <- ggplot() +
+  ggplot() +
     geom_hline(yintercept = f$M, linetype = "dotted", colour = "grey45") +
-    annotate("text", x = 150, y = f$M, vjust = -0.5, hjust = 0, size = 3.2,
+    annotate("text", x = 100, y = f$M, vjust = -0.5, hjust = 0, size = 2.3,
              colour = "grey30", parse = TRUE,
              label = sprintf('italic(M) == "%s"', dec(f$M, 1))) +
     geom_vline(xintercept = f$Sinf, linetype = "dashed", colour = "grey55") +
-    geom_line(data = curva, aes(S, P), colour = col[[gn]], linewidth = 1) +
-    geom_point(data = d, aes(S, P), colour = col[[gn]], size = 2.4) +
+    geom_line(data = curva, aes(S, P), colour = col[[gn]], linewidth = 0.7) +
+    geom_point(data = d, aes(S, P), colour = col[[gn]], size = 1.3) +
     geom_point(aes(x = f$Sinf, y = f$M / 2), shape = 21, fill = "white",
-               colour = col[[gn]], size = 3.4, stroke = 1.2) +
-    annotate("text", x = f$Sinf - 150, y = f$M / 2, hjust = 1, vjust = -0.6,
-             size = 3.2, parse = TRUE,
-             label = sprintf('italic(S)^"*" == "%s" ~ m^2', dec(f$Sinf, 1))) +
-    geom_point(aes(x = f$Seval, y = f$Peval), shape = 8, size = 3.2, stroke = 1) +
-    annotate("text", x = f$Seval + 120, y = f$Peval, hjust = 0, vjust = 1.6,
-             size = 3.2, parse = TRUE, label = 'frac(2, 3) * italic(S)["máx"]') +
-    annotate("rect", xmin = 3080, xmax = 5180, ymin = 0.02 * f$M,
-             ymax = 0.44 * f$M, fill = "white", colour = "grey40",
-             linewidth = 0.3) +
-    annotate("text", x = 3150, y = yc, hjust = 0, size = 3, parse = TRUE,
-             label = caja) +
-    scale_x_continuous(labels = eje, limits = c(0, 5200),
+               colour = col[[gn]], size = 2, stroke = 0.8) +
+    annotate("text", x = f$Sinf + 120, y = f$M / 2, hjust = 0, vjust = 1.3, size = 2.3,
+             parse = TRUE, label = sprintf('italic(S)^"*" == "%s"', dec(f$Sinf, 1))) +
+    geom_point(aes(x = f$Seval, y = f$Peval), shape = 8, size = 1.8, stroke = 0.6) +
+    annotate("text", x = 5150, y = 0.06 * f$M, hjust = 1, size = 2.2, parse = TRUE,
+             label = sprintf('italic(r)^2 == "%s %%"', dec(f$R2 * 100, 2))) +
+    scale_x_continuous(labels = eje, limits = c(0, 5200), breaks = seq(0, 5000, 1000),
                        expand = expansion(mult = c(0.01, 0.02))) +
-    scale_y_continuous(labels = eje, limits = c(0, f$M * 1.08)) +
-    labs(title = sprintf("Grupo %s", sub("G", "", gn)),
+    scale_y_continuous(labels = eje, limits = c(0, f$M * 1.1)) +
+    labs(title = nombre_g[[gn]],
          x = expression("Superficie, " * italic(S) * " (m"^2 * ")"),
          y = expression("Densidad, " * italic(P) * " (animales ha"^-1 * ")")) +
     tema
-  guardar(g, sprintf("Figura%d_ajuste_%s", num, gn))
 }
 
-fig_deriv <- function(gn, num) {
+panel_deriv <- function(gn) {
   f <- fits[[gn]]
   dv <- function(S) f$M * f$A * f$k * exp(-f$k * S) / (1 + f$A * exp(-f$k * S))^2
   curva <- data.frame(S = xs, dP = dv(xs))
-  ymax <- f$dPmax * 1.45
-  caja <- c(
-    'frac(italic(dP), italic(dS)) == frac(italic(M) * italic(A) * italic(k) * e^{-italic(k) * italic(S)}, (1 + italic(A) * e^{-italic(k) * italic(S)})^2)',
-    sprintf('(italic(dP)/italic(dS))["máx"] == %s', sci_pm(f$dPmax)),
-    sprintf('italic(S)^"*" == "%s" ~ m^2', dec(f$Sinf, 1)))
-  g <- ggplot() +
+  ggplot() +
     geom_vline(xintercept = f$Sinf, linetype = "dashed", colour = "grey55") +
-    geom_line(data = curva, aes(S, dP), colour = col[[gn]], linewidth = 1) +
-    geom_point(aes(x = f$Sinf, y = f$dPmax), shape = 8, size = 3.2, stroke = 1) +
-    annotate("rect", xmin = 3250, xmax = 5180, ymin = ymax * 0.60,
-             ymax = ymax * 0.985, fill = "white", colour = "grey40",
-             linewidth = 0.3) +
-    annotate("text", x = 3320, y = ymax * c(0.885, 0.735, 0.645), hjust = 0,
-             size = 3, parse = TRUE, label = caja) +
-    scale_x_continuous(labels = eje, limits = c(0, 5200),
+    geom_line(data = curva, aes(S, dP), colour = col[[gn]], linewidth = 0.7) +
+    geom_point(aes(x = f$Sinf, y = f$dPmax), shape = 8, size = 1.8, stroke = 0.6) +
+    annotate("text", x = f$Sinf + 150, y = f$dPmax, hjust = 0, vjust = 0.2, size = 2.2,
+             parse = TRUE, label = sprintf('"máx" == %s', sci_pm(f$dPmax))) +
+    scale_x_continuous(labels = eje, limits = c(0, 5200), breaks = seq(0, 5000, 1000),
                        expand = expansion(mult = c(0.01, 0.02))) +
-    scale_y_continuous(labels = label_number(decimal.mark = ",", accuracy = 0.001),
-                       limits = c(0, ymax)) +
-    labs(title = sprintf("Grupo %s", sub("G", "", gn)),
+    scale_y_continuous(labels = function(x) dec(x, 3), limits = c(0, f$dPmax * 1.25)) +
+    labs(title = nombre_g[[gn]],
          x = expression("Superficie, " * italic(S) * " (m"^2 * ")"),
          y = expression(italic(dP) / italic(dS) * " (animales ha"^-1 * " m"^-2 * ")")) +
     tema
-  guardar(g, sprintf("Figura%d_dPdS_%s", num, gn))
 }
 
 fig_tornado <- function() {
@@ -375,24 +360,25 @@ fig_tornado <- function() {
   long$Extremo <- factor(long$Extremo, levels = c("Valor bajo", "Valor alto"))
   lim <- max(abs(long$Cambio)) * 1.3
   g <- ggplot(long, aes(x = Cambio, y = Parametro, fill = Extremo)) +
-    geom_col(width = 0.6, colour = "grey30", linewidth = 0.2,
-             position = "identity") +
+    geom_col(width = 0.6, colour = "grey30", linewidth = 0.2, position = "identity") +
     geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.4) +
     geom_text(aes(label = paste0(ifelse(Cambio > 0, "+", ""), dec(Cambio, 1), " %"),
-                  hjust = ifelse(Cambio >= 0, -0.12, 1.12)), size = 2.8) +
+                  hjust = ifelse(Cambio >= 0, -0.12, 1.12)), size = 2.6) +
     scale_fill_manual(values = c("Valor bajo" = "#56B4E9", "Valor alto" = "#E69F00"),
                       name = NULL) +
-    scale_x_continuous(labels = function(x) paste0(dec(x, 0), " %"),
-                       limits = c(-lim, lim)) +
+    scale_x_continuous(labels = function(x) paste0(dec(x, 0), " %"), limits = c(-lim, lim)) +
     labs(x = "Cambio del VECE al 100 % frente al escenario base", y = NULL) +
-    tema + theme(legend.position = "bottom", axis.title.x = element_text(size = 9.5),
-                 plot.margin = margin(6, 10, 6, 6))
-  guardar(g, "Figura8_sensibilidad", w = 16, h = 9)
+    theme_bw(base_size = 9) +
+    theme(panel.grid.minor = element_blank(), legend.position = "bottom")
+  guardar(g, "Figura4_sensibilidad", w = 19, h = 9)
 }
 
-for (i in seq_along(grupos)) fig_ajuste(grupos[i], i + 1)   # Figuras 2–4
-for (i in seq_along(grupos)) fig_deriv(grupos[i], i + 4)    # Figuras 5–7
-fig_tornado()                                               # Figura 8
+suppressPackageStartupMessages(library(patchwork))
+fig3 <- (panel_ajuste("G1") | panel_ajuste("G2") | panel_ajuste("G3")) /
+        (panel_deriv("G1") | panel_deriv("G2") | panel_deriv("G3")) +
+  plot_annotation(tag_levels = "A")
+guardar(fig3, "Figura3_ajuste_dPdS", w = 19, h = 12)       # Figura 3
+fig_tornado()                                               # Figura 4
 
 ## ---- 8. Resumen y trazabilidad ----------------------------------------------
 res <- c(
@@ -410,7 +396,7 @@ res <- c(
   "", "Sensibilidad local (VECE al 100 %, cambio % bajo / alto):",
   sprintf("  %s [%s]: %s %% / %s %%", oat$Parametro, oat$Bajo,
           dec(oat$Cambio_bajo_pct, 1), dec(oat$Cambio_alto_pct, 1)),
-  "", sprintf("Monte Carlo (%d iteraciones, semilla %d): mediana = %s; P2,5–P97,5 = %s – %s S/ por año",
+  "", sprintf("Monte Carlo (%d iteraciones, semilla %d): mediana = %s; P2.5–P97.5 = %s – %s S/ por año",
               NMC, SEED, dec(qMC[2], 2), dec(qMC[1], 2), dec(qMC[3], 2)),
   sprintf("  rho Spearman %s = %s", mc_tab$Parametro, dec(mc_tab$rho_Spearman, 3)),
   "", R.version.string)

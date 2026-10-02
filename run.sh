@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # run.sh — genera todas las figuras (600 ppp, PNG y TIFF) y tablas (xlsx) del
-# manuscrito VCEIE-jalca v2.1.
-#   Figuras 2–8 y Tablas_VCEIE.xlsx         -> pipeline_VCEIE.R
-#   Figura 9 y Tablas_grupos_tamano.xlsx    -> grupos_tamano_VCEIE.R (GBIF + AVONET)
+# manuscrito VCEIE-jalca (formato ECOSISTEMAS).
+#   Figuras 3–4 y Tablas_VCEIE.xlsx         -> pipeline_VCEIE.R
+#   Figura 2 y Tablas_grupos_tamano.xlsx    -> grupos_tamano_VCEIE.R (GBIF + AVONET)
 #   Figura 1                                -> figura1_mapa.R (shapefiles INEI)
 # Uso:   ./run.sh
 # Rutas configurables por variables de entorno (valores por defecto del Mac de Obert):
@@ -20,14 +20,14 @@ OUT="${OUT:-$DIR/outputs}"
 command -v Rscript >/dev/null 2>&1 || { echo "ERROR: falta R (Rscript). https://cran.r-project.org" >&2; exit 1; }
 mkdir -p "$OUT"
 
-echo "== Figuras 2–8 y Tablas_VCEIE.xlsx =="
+echo "== Figuras 3–4 y Tablas_VCEIE.xlsx =="
 Rscript "$DIR/pipeline_VCEIE.R" --out="$OUT"
 
-echo "== Figura 9 y Tablas_grupos_tamano.xlsx =="
+echo "== Figura 2 y Tablas_grupos_tamano.xlsx =="
 if [ -f "$GBIF_CSV" ] && [ -f "$AVONET_XLSX" ]; then
   Rscript "$DIR/grupos_tamano_VCEIE.R" --gbif="$GBIF_CSV" --avonet="$AVONET_XLSX" --out="$OUT"
 else
-  echo "AVISO: falta la lista GBIF o AVONET; se omite la Figura 9." >&2
+  echo "AVISO: falta la lista GBIF o AVONET; se omite la Figura 2." >&2
   echo "       GBIF_CSV=$GBIF_CSV" >&2; echo "       AVONET_XLSX=$AVONET_XLSX" >&2
 fi
 

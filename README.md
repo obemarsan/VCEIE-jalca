@@ -4,9 +4,9 @@ Código en R que reproduce íntegramente los resultados, las tablas y las figura
 
 > **Valoración económica del impacto ecológico mediante un modelo densidad–área de saturación: aplicación ilustrativa a la fauna voladora del ecosistema jalca, Perú**
 
-El trabajo propone un procedimiento de valoración y lo aplica de forma **ilustrativa**. La serie densidad–superficie (`datos_VCEIE.csv`) es la entrada del modelo y no constituye un inventario faunístico. Los parámetros de `params_VCEIE.csv` (capacidad de carga, individuos de referencia y precios), la fracción de evaluación (2/3), el área (8 218,23 ha), la frecuencia (2 por año) y el factor de representatividad (0,76) son **supuestos de escenario**. Su influencia se cuantifica con un análisis de sensibilidad local y un análisis Monte Carlo.
+El trabajo propone un procedimiento de valoración y lo aplica de forma **ilustrativa**. La serie densidad–superficie (`datos_VCEIE.csv`) es la entrada del modelo y no constituye un inventario faunístico. Los parámetros de `params_VCEIE.csv` (capacidad de carga, individuos de referencia y precios), la fracción de evaluación (2/3), el área (8218.23 ha), la frecuencia (2 por año) y el factor de representatividad (0.76) son **supuestos de escenario**. Su influencia se cuantifica con un análisis de sensibilidad local y un análisis Monte Carlo.
 
-La Figura 1 (mapa de ubicación) se genera con `figura1_mapa.R` a partir de los límites político-administrativos del INEI (departamentos, provincias y distritos), que no se redistribuyen aquí. El polígono de aplicación está en el distrito de Gregorio Pita, provincia de San Marcos, Cajamarca (7,18278° S; 78,17033° O).
+La Figura 1 (mapa de ubicación) se genera con `figura1_mapa.R` a partir de los límites político-administrativos del INEI (departamentos, provincias y distritos), que no se redistribuyen aquí. El polígono de aplicación está en el distrito de Gregorio Pita, provincia de San Marcos, Cajamarca (7.18278° S; 78.17033° O).
 
 ## Modelo
 
@@ -48,31 +48,29 @@ Rscript grupos_tamano_VCEIE.R --gbif=<lista_GBIF>.csv --avonet="AVONET Supplemen
 
 La lista de GBIF (formato *Species list*, 250 especies, 14 016 registros) se descarga desde https://doi.org/10.15468/dl.m2ggby; AVONET, desde el material suplementario de Tobias et al. (2022). Ninguno se redistribuye aquí. Las 5 equivalencias de nombres resueltas a mano van en `revisar_manual_resuelto.csv`, en la misma carpeta que la lista de GBIF.
 
-Genera en `outputs/`:
+Genera en `outputs/` (formato ECOSISTEMAS: punto decimal, 600 ppp, 19 cm de ancho, PNG y TIFF):
 
-- `Figura2_ajuste_G1` … `Figura4_ajuste_G3`: ajuste densidad–área por grupo.
-- `Figura5_dPdS_G1` … `Figura7_dPdS_G3`: tasa de cambio dP/dS por grupo.
-- `Figura8_sensibilidad`: tornado de la sensibilidad local (±20 %).
-- Cada figura en PNG y TIFF (LZW), a 600 ppp y con coma decimal.
-- `Tablas_VCEIE.xlsx` con seis hojas: serie de entrada, parámetros con IC 95 %, valoración, sensibilidad, residuos y Monte Carlo.
+- `Figura1_mapa_ubicacion`: ubicación del polígono (requiere shapefiles del INEI).
+- `Figura2_masa_corporal`: masa corporal de las 162 especies de hábitats abiertos y cortes de 50 g y 500 g.
+- `Figura3_ajuste_dPdS`: ajuste densidad–área (A–C) y tasa de cambio dP/dS (D–F) de los tres grupos.
+- `Figura4_sensibilidad`: tornado de la sensibilidad local (±20 %).
+- `Tablas_VCEIE.xlsx`: Tabla S1 (serie de entrada), Tabla 2 (parámetros, IC 95 %, cuenta física) y anexos (valoración, sensibilidad, residuos, Monte Carlo).
+- `Tablas_grupos_tamano.xlsx`: Tabla 1 (grupos de tamaño) y anexos (criterios, especies, revisión de nombres).
 - `resultados_VCEIE.txt` y `sessionInfo.txt`.
-
-La corrida completa tarda menos de 1 minuto.
 
 ## Resultado esperado (escenario base)
 
-| Grupo | n | A | k (m⁻²) | r² (%) | S* (m²) [IC 95 %] | VEIE (S/ por ha) [IC 95 %] |
-|---|---|---|---|---|---|---|
-| G1 | 7 | 16,251 | 1,310 × 10⁻³ | 97,07 | 2 128,7 [1 974,7–2 286,7] | 187,811 [177,428–195,883] |
-| G2 | 11 | 18,812 | 1,351 × 10⁻³ | 98,31 | 2 171,7 [2 037,4–2 293,1] | 221,899 [214,129–229,160] |
-| G3 | 8 | 19,606 | 1,349 × 10⁻³ | 98,51 | 2 205,2 [2 086,5–2 315,4] | 80,990 [78,081–84,148] |
+| Grupo | n | A | k (m⁻²) | r² (%) | S* (m²) [IC 95 %] | Q | VEIE (S/ por ha) [IC 95 %] |
+|---|---|---|---|---|---|---|---|
+| 1 (grande) | 7 | 16.251 | 1.310 × 10⁻³ | 97.07 | 2128.7 [1974.7–2286.7] | 15.916 | 187.811 [177.428–195.883] |
+| 2 (mediano) | 11 | 18.812 | 1.351 × 10⁻³ | 98.31 | 2171.7 [2037.4–2293.1] | 29.587 | 221.899 [214.129–229.160] |
+| 3 (pequeño) | 8 | 19.606 | 1.349 × 10⁻³ | 98.51 | 2205.2 [2086.5–2315.4] | 21.313 | 80.990 [78.081–84.148] |
 
-- Cuenta física (individuos equivalentes por ha): 15,916; 29,587; 21,313 (total 66,816).
+- Cuenta física total: 66.816 individuos equivalentes por ha.
 - Grupos de tamaño (162 especies de hábitats abiertos): 94 pequeñas, 51 medianas, 17 grandes.
-- VECE bruto: S/ 8 065 376,56 por año.
-- **VECE al 100 %: S/ 10 612 337,58 por año.**
-- Monte Carlo (10 000 iteraciones, semilla 2026): mediana de S/ 9 984 106,94; percentiles 2,5–97,5 de S/ 5 578 618,05 a 16 552 403,03.
-- Parámetros más influyentes: la fracción de evaluación (ρ = 0,843) y el factor de representatividad (ρ = −0,392).
+- VECE bruto: S/ 8 065 376.56 por año. **VECE al 100 %: S/ 10 612 337.58 por año.**
+- Monte Carlo (10 000 iteraciones, semilla 2026): mediana de S/ 9 984 106.94; percentiles 2.5–97.5 de S/ 5 578 618.05 a 16 552 403.03.
+- Parámetros más influyentes: la fracción de evaluación (ρ = 0.843) y el factor de representatividad (ρ = −0.392).
 
 ## Licencia
 
@@ -80,4 +78,4 @@ El código se distribuye bajo licencia MIT (ver `LICENSE`). La serie de entrada 
 
 ## Cómo citar
 
-> Marín-Machuca, O., Vargas Ayala, J., Daga López, R. A., Cabeza Molina, L. F., Alvarado Zambrano, F. A., Vértiz Osores, J. J., Cucho Flores, R. R. and Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v2.0.0) [Software]. GitHub. Disponible en: https://github.com/obemarsan/VCEIE-jalca
+> Marín-Machuca, O., Vargas Ayala, J., Daga López, R. A., Cabeza Molina, L. F., Alvarado Zambrano, F. A., Vértiz Osores, J. J., Cucho Flores, R. R. and Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v2.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.[PENDIENTE]
