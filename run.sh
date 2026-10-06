@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run.sh — genera todas las figuras (600 ppp, PNG y TIFF) y tablas (xlsx) del
-# manuscrito VCEIE-jalca (formato ECOSISTEMAS).
-#   Figuras 3–4 y Tablas_VCEIE.xlsx         -> pipeline_VCEIE.R
+# run.sh — genera todas las figuras (PDF editable + PNG 600 ppp, 15 cm) y tablas
+# (xlsx) del manuscrito VCEIE-jalca (formato Revista Peruana de Biología).
+#   Figuras 3–5 y Tablas_VCEIE.xlsx         -> pipeline_VCEIE.R
 #   Figura 2 y Tablas_grupos_tamano.xlsx    -> grupos_tamano_VCEIE.R (GBIF + AVONET)
 #   Figura 1                                -> figura1_mapa.R (shapefiles INEI)
 # Uso:   ./run.sh
@@ -20,7 +20,7 @@ OUT="${OUT:-$DIR/outputs}"
 command -v Rscript >/dev/null 2>&1 || { echo "ERROR: falta R (Rscript). https://cran.r-project.org" >&2; exit 1; }
 mkdir -p "$OUT"
 
-echo "== Figuras 3–4 y Tablas_VCEIE.xlsx =="
+echo "== Figuras 3–5 y Tablas_VCEIE.xlsx =="
 Rscript "$DIR/pipeline_VCEIE.R" --out="$OUT"
 
 echo "== Figura 2 y Tablas_grupos_tamano.xlsx =="

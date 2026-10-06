@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # =============================================================================
-# VCEIE-jalca — Pipeline reproducible de resultados, tablas y figuras (v2.0)
+# VCEIE-jalca — Pipeline reproducible de resultados, tablas y figuras (v3.0, RPB)
 # Procedimiento de valoración económica basado en un modelo densidad–área de
 # saturación, aplicado de forma ilustrativa a la fauna voladora de la jalca
 # (Gregorio Pita, San Marcos, Cajamarca, Perú).
@@ -27,14 +27,16 @@
 # SALIDAS (carpeta outputs/):
 #   Figura3_ajuste_dPdS   (A–C ajuste densidad–área; D–F tasa de cambio dP/dS)
 #   Figura4_sensibilidad  (tornado, sensibilidad local)
-#     PNG y TIFF (LZW), 600 ppp, 19 cm de ancho
+#   Figura5_comparacion   (saturación frente a densidad lineal y constante)
+#     PDF editable (texto como texto) + PNG 600 ppp, 15 cm de ancho máximo
 #   (Figura 1: figura1_mapa.R; Figura 2: grupos_tamano_VCEIE.R)
 #   Tablas_VCEIE.xlsx       (serie de entrada, parámetros con IC 95 %,
 #                            valoración, sensibilidad, Monte Carlo, residuos)
 #   resultados_VCEIE.txt    (resumen numérico)
 #   sessionInfo.txt         (versión de R y paquetes usados)
 #
-# Formato ECOSISTEMAS: punto decimal, millares con espacio desde 10 000;
+# Formato Revista Peruana de Biología: punto decimal, cifras sin separador de
+# millares (10612337.58); figuras de R en PDF editable, ancho <= 15 cm;
 # paleta Okabe-Ito apta para daltonismo. La Figura 1 (mapa de ubicación) se genera con figura1_mapa.R.
 # =============================================================================
 
@@ -215,6 +217,51 @@ rho <- vapply(X, function(v) cor(v, Y, method = "spearman"), numeric(1))
 mc_tab <- data.frame(Parametro = names(rho), rho_Spearman = round(rho, 3))
 mc_tab <- mc_tab[order(-abs(mc_tab$rho_Spearman)), ]
 
+## ---- 5b. Comparación de la forma del modelo densidad–área ------------------
+# El escalamiento convencional supone que la densidad no depende del área.
+# Se comparan tres formas de obtener P(f*Smax), con la misma cuenta física y
+# monetaria y los mismos parámetros supuestos:
+#   (a) saturación logística (modelo propuesto; M fijo, A y k estimados);
+#   (b) lineal, P = a + b*S por MCO (densidad creciente sin límite);
+#   (c) constante, P = media de la serie (valor por hectárea constante).
+# (a) y (b) estiman dos parámetros de la serie, de modo que su ajuste se compara
+# con RMSE y AIC en la escala original de P (K = 3, incluida la varianza).
+P_sat <- function(gn, S) { f <- fits[[gn]]; f$M / (1 + f$A * exp(-f$k * S)) }
+lin_fit <- setNames(lapply(grupos, function(gn) lm(P ~ S, data = dat[dat$grupo == gn, ])), grupos)
+P_lin <- function(gn, S) unname(predict(lin_fit[[gn]], data.frame(S = S)))
+P_con <- function(gn, S) rep(mean(dat$P[dat$grupo == gn]), length(S))
+modelos <- list(Saturación = P_sat, Lineal = P_lin, Constante = P_con)
+vece_modelo <- function(Pfun, frac = FRAC) {
+  tot <- 0
+  for (i in seq_along(grupos)) {
+    Se <- frac * par$Smax[i]
+    tot <- tot + Pfun(grupos[i], Se) * (Se / 10000) * par$individuos[i] * par$precio[i]
+  }
+  tot * AREA_HA * VECES / FACTOR
+}
+stopifnot(abs(vece_modelo(P_sat) - VECE_100) < 1e-6)
+aic_n <- function(rss, n, K = 3) n * log(rss / n) + 2 * K
+cmp_g <- do.call(rbind, lapply(grupos, function(gn) {
+  d <- dat[dat$grupo == gn, ]; n <- nrow(d); Se <- FRAC * par$Smax[par$grupo == gn]
+  rs <- sum((d$P - P_sat(gn, d$S))^2); rl <- sum(resid(lin_fit[[gn]])^2)
+  data.frame(Grupo = gn,
+             RMSE_sat = sqrt(rs / n), RMSE_lin = sqrt(rl / n),
+             AIC_sat = aic_n(rs, n), AIC_lin = aic_n(rl, n),
+             P_sat = P_sat(gn, Se), P_lin = P_lin(gn, Se), P_con = P_con(gn, Se))
+}))
+VECE_mod <- vapply(modelos, vece_modelo, numeric(1))
+dif_mod  <- 100 * (VECE_mod / VECE_100 - 1)
+# Curva del VECE al 100 % según la fracción evaluada (0.1–1.25 de Smax);
+# por encima de 1 el modelo se usa fuera del intervalo de la serie.
+fr <- seq(0.10, 1.25, by = 0.01)
+curva_f <- data.frame(fraccion = fr,
+                      Saturación = vapply(fr, function(x) vece_modelo(P_sat, x), numeric(1)),
+                      Lineal     = vapply(fr, function(x) vece_modelo(P_lin, x), numeric(1)),
+                      Constante  = vapply(fr, function(x) vece_modelo(P_con, x), numeric(1)))
+curva_f$dif_lin_pct <- 100 * (curva_f$Lineal / curva_f$Saturación - 1)
+curva_f$dif_con_pct <- 100 * (curva_f$Constante / curva_f$Saturación - 1)
+dif_en <- function(x) curva_f[which.min(abs(curva_f$fraccion - x)), c("dif_lin_pct", "dif_con_pct")]
+
 ## ---- 6. Tablas (Excel) -----------------------------------------------------
 maxn <- max(table(dat$grupo))
 T1 <- as.data.frame(do.call(cbind, lapply(grupos, function(gn) {
@@ -270,18 +317,26 @@ TS1 <- do.call(rbind, lapply(grupos, function(gn) {
              check.names = FALSE)
 }))
 
-write_xlsx(list(TablaS1_serie_entrada = T1, Tabla2_parametros = T2, TS_valoracion = T3,
-                TS_sensibilidad_Fig4 = T4, TS_residuos = TS1, TS_montecarlo = mc_tab),
+T5 <- rbind(
+  data.frame(Grupo = cmp_g$Grupo,
+             `RMSE saturación` = r3(cmp_g$RMSE_sat), `RMSE lineal` = r3(cmp_g$RMSE_lin),
+             `AIC saturación` = round(cmp_g$AIC_sat, 2), `AIC lineal` = round(cmp_g$AIC_lin, 2),
+             `P(2/3 Smax) saturación` = r3(cmp_g$P_sat), `P(2/3 Smax) lineal` = r3(cmp_g$P_lin),
+             `P(2/3 Smax) constante` = r3(cmp_g$P_con), check.names = FALSE),
+  NULL)
+T5b <- data.frame(Modelo = names(VECE_mod), `VECE al 100 % (S/ por año)` = round(VECE_mod, 2),
+                  `Diferencia frente a saturación (%)` = round(dif_mod, 1), check.names = FALSE)
+TS5 <- data.frame(fraccion = fr, round(curva_f[, -1], 2), check.names = FALSE)
+
+write_xlsx(list(TablaS1_serie_entrada = T1, Tabla2_parametros = T2,
+                Tabla3_comparacion_grupos = T5, Tabla3_comparacion_VECE = T5b,
+                TS_valoracion = T3, TS_sensibilidad_Fig4 = T4,
+                TS_comparacion_Fig5 = TS5, TS_residuos = TS1, TS_montecarlo = mc_tab),
            file.path(out, "Tablas_VCEIE.xlsx"))
 
-## ---- 7. Figuras (formato ECOSISTEMAS) ------------------------------------
-# Números: punto decimal; espacio de millares solo desde 10 000 (3000, 27 000)
-dec <- function(x, d) {
-  out <- formatC(x, format = "f", digits = d, big.mark = "")
-  grande <- !is.na(x) & abs(x) >= 10000
-  out[grande] <- formatC(x[grande], format = "f", digits = d, big.mark = " ")
-  out
-}
+## ---- 7. Figuras (formato Revista Peruana de Biología) ------------------------
+# Números: punto decimal y cifras juntas, sin separador de millares (30302)
+dec <- function(x, d) formatC(x, format = "f", digits = d, big.mark = "")
 eje <- function(x) ifelse(is.na(x), NA, dec(x, ifelse(all(abs(x - round(x)) < 1e-9, na.rm = TRUE), 0,
                                                       max(0, min(3, ceiling(-log10(min(diff(sort(unique(x)))))))))))
 sci_pm <- function(x) {                       # "1.310 %*% 10^-3" para plotmath
@@ -291,17 +346,19 @@ sci_pm <- function(x) {                       # "1.310 %*% 10^-3" para plotmath
 col <- c(G1 = "#0072B2", G2 = "#D55E00", G3 = "#009E73")
 nombre_g <- c(G1 = "Grupo 1 (grande)", G2 = "Grupo 2 (mediano)", G3 = "Grupo 3 (pequeño)")
 xs  <- seq(0, 5200, length.out = 500)
-tema <- theme_bw(base_size = 8) +
-  theme(plot.title = element_text(face = "bold", size = 8),
+tema <- theme_bw(base_size = 7) +
+  theme(plot.title = element_text(face = "bold", size = 7),
         panel.grid.minor = element_blank(),
         plot.tag = element_text(face = "bold", size = 9))
 
-guardar <- function(g, nombre, w = 19, h = 12) {
+# PDF vectorial editable (requisito RPB para gráficos de R) + PNG 600 ppp
+# para insertar en el manuscrito Word. Ancho máximo 15 cm.
+guardar <- function(g, nombre, w = 15, h = 10) {
+  stopifnot(w <= 15)
+  ggsave(file.path(out, paste0(nombre, ".pdf")), g,
+         width = w, height = h, units = "cm", device = cairo_pdf, bg = "white")
   ggsave(file.path(out, paste0(nombre, ".png")), g,
          width = w, height = h, units = "cm", dpi = 600, bg = "white")
-  ggsave(file.path(out, paste0(nombre, ".tiff")), g,
-         width = w, height = h, units = "cm", dpi = 600, bg = "white",
-         device = "tiff", compression = "lzw")
 }
 
 panel_ajuste <- function(gn) {
@@ -339,11 +396,11 @@ panel_deriv <- function(gn) {
     geom_vline(xintercept = f$Sinf, linetype = "dashed", colour = "grey55") +
     geom_line(data = curva, aes(S, dP), colour = col[[gn]], linewidth = 0.7) +
     geom_point(aes(x = f$Sinf, y = f$dPmax), shape = 8, size = 1.8, stroke = 0.6) +
-    annotate("text", x = f$Sinf + 150, y = f$dPmax, hjust = 0, vjust = 0.2, size = 2.2,
+    annotate("text", x = f$Sinf, y = f$dPmax * 1.13, hjust = 0.5, size = 2.1,
              parse = TRUE, label = sprintf('"máx" == %s', sci_pm(f$dPmax))) +
     scale_x_continuous(labels = eje, limits = c(0, 5200), breaks = seq(0, 5000, 1000),
                        expand = expansion(mult = c(0.01, 0.02))) +
-    scale_y_continuous(labels = function(x) dec(x, 3), limits = c(0, f$dPmax * 1.25)) +
+    scale_y_continuous(labels = function(x) dec(x, 3), limits = c(0, f$dPmax * 1.3)) +
     labs(title = nombre_g[[gn]],
          x = expression("Superficie, " * italic(S) * " (m"^2 * ")"),
          y = expression(italic(dP) / italic(dS) * " (animales ha"^-1 * " m"^-2 * ")")) +
@@ -363,22 +420,63 @@ fig_tornado <- function() {
     geom_col(width = 0.6, colour = "grey30", linewidth = 0.2, position = "identity") +
     geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.4) +
     geom_text(aes(label = paste0(ifelse(Cambio > 0, "+", ""), dec(Cambio, 1), " %"),
-                  hjust = ifelse(Cambio >= 0, -0.12, 1.12)), size = 2.6) +
+                  hjust = ifelse(Cambio >= 0, -0.12, 1.12)), size = 2.3) +
     scale_fill_manual(values = c("Valor bajo" = "#56B4E9", "Valor alto" = "#E69F00"),
                       name = NULL) +
     scale_x_continuous(labels = function(x) paste0(dec(x, 0), " %"), limits = c(-lim, lim)) +
     labs(x = "Cambio del VECE al 100 % frente al escenario base", y = NULL) +
-    theme_bw(base_size = 9) +
+    theme_bw(base_size = 8) +
     theme(panel.grid.minor = element_blank(), legend.position = "bottom")
-  guardar(g, "Figura4_sensibilidad", w = 19, h = 9)
+  guardar(g, "Figura4_sensibilidad", w = 15, h = 8)
 }
 
 suppressPackageStartupMessages(library(patchwork))
 fig3 <- (panel_ajuste("G1") | panel_ajuste("G2") | panel_ajuste("G3")) /
         (panel_deriv("G1") | panel_deriv("G2") | panel_deriv("G3")) +
   plot_annotation(tag_levels = "A")
-guardar(fig3, "Figura3_ajuste_dPdS", w = 19, h = 12)       # Figura 3
+guardar(fig3, "Figura3_ajuste_dPdS", w = 15, h = 11)       # Figura 3
 fig_tornado()                                               # Figura 4
+
+fig_comparacion <- function() {                             # Figura 5
+  colm <- c("Saturación" = "#0072B2", "Lineal" = "#D55E00", "Constante" = "#009E73")
+  lt   <- c("Saturación" = "solid", "Lineal" = "dashed", "Constante" = "dotdash")
+  lv <- names(colm)
+  la <- do.call(rbind, lapply(lv, function(m)
+    data.frame(fraccion = curva_f$fraccion, Modelo = m, VECE = curva_f[[m]] / 1e6)))
+  la$Modelo <- factor(la$Modelo, levels = lv)
+  # La saturación es la referencia (0 %); se dibuja para que ambas leyendas sean
+  # idénticas y patchwork las combine en una sola (ggplot2 >= 3.5 no las une si difieren)
+  lb <- rbind(data.frame(fraccion = curva_f$fraccion, Modelo = "Saturación", Dif = 0),
+              data.frame(fraccion = curva_f$fraccion, Modelo = "Lineal", Dif = curva_f$dif_lin_pct),
+              data.frame(fraccion = curva_f$fraccion, Modelo = "Constante", Dif = curva_f$dif_con_pct))
+  lb$Modelo <- factor(lb$Modelo, levels = lv)
+  extra <- annotate("rect", xmin = 1, xmax = 1.25, ymin = -Inf, ymax = Inf,
+                    fill = "grey90", alpha = 0.7)
+  marca <- geom_vline(xintercept = FRAC, linetype = "dotted", colour = "grey30")
+  ejef <- scale_x_continuous(breaks = c(0.25, 0.5, 2/3, 1, 1.25),
+                             labels = c("0.25", "0.50", "2/3", "1", "1.25"))
+  gA <- ggplot(la, aes(fraccion, VECE, colour = Modelo, linetype = Modelo)) +
+    extra + marca + geom_line(linewidth = 0.6) +
+    scale_colour_manual(values = colm, name = "Densidad") +
+    scale_linetype_manual(values = lt, name = "Densidad") + ejef +
+    scale_y_continuous(labels = function(x) dec(x, 0)) +
+    labs(x = expression("Fracción evaluada, " * italic(f) * " (" * italic(S) * "/" * italic(S)[max] * ")"),
+         y = expression("VECE al 100 % (millones de S/ año"^-1 * ")")) + tema
+  gB <- ggplot(lb, aes(fraccion, Dif, colour = Modelo, linetype = Modelo)) +
+    extra + marca + geom_line(linewidth = 0.6) +
+    scale_colour_manual(values = colm, name = "Densidad") +
+    scale_linetype_manual(values = lt, name = "Densidad") + ejef +
+    scale_y_continuous(labels = function(x) paste0(dec(x, 0), " %"),
+                       breaks = seq(-50, 100, 25)) +
+    # eje recortado: con f < 0.3 la densidad constante supera a la saturación en >100 %
+    coord_cartesian(ylim = c(-55, 100)) +
+    labs(x = expression("Fracción evaluada, " * italic(f) * " (" * italic(S) * "/" * italic(S)[max] * ")"),
+         y = "Diferencia frente a saturación") + tema
+  g <- (gA | gB) + plot_layout(guides = "collect") +
+    plot_annotation(tag_levels = "A") & theme(legend.position = "bottom")
+  guardar(g, "Figura5_comparacion", w = 15, h = 7.5)
+}
+fig_comparacion()
 
 ## ---- 8. Resumen y trazabilidad ----------------------------------------------
 res <- c(
@@ -399,6 +497,17 @@ res <- c(
   "", sprintf("Monte Carlo (%d iteraciones, semilla %d): mediana = %s; P2.5–P97.5 = %s – %s S/ por año",
               NMC, SEED, dec(qMC[2], 2), dec(qMC[1], 2), dec(qMC[3], 2)),
   sprintf("  rho Spearman %s = %s", mc_tab$Parametro, dec(mc_tab$rho_Spearman, 3)),
+  "", "Comparación de la forma del modelo densidad–área (f = 2/3):",
+  sprintf("  %s: RMSE sat = %s, lin = %s; AIC sat = %s, lin = %s; P sat = %s, lin = %s, const = %s",
+          cmp_g$Grupo, dec(cmp_g$RMSE_sat, 3), dec(cmp_g$RMSE_lin, 3),
+          dec(cmp_g$AIC_sat, 2), dec(cmp_g$AIC_lin, 2),
+          dec(cmp_g$P_sat, 3), dec(cmp_g$P_lin, 3), dec(cmp_g$P_con, 3)),
+  sprintf("  VECE al 100 %% %s = %s S/ por año (%s %% frente a saturación)",
+          names(VECE_mod), dec(VECE_mod, 2), dec(dif_mod, 1)),
+  sprintf("  Diferencia lineal / constante frente a saturación en f = %s: %s %% / %s %%",
+          c("0.25", "0.50", "1.00", "1.25"),
+          vapply(c(0.25, 0.5, 1, 1.25), function(x) dec(dif_en(x)$dif_lin_pct, 1), ""),
+          vapply(c(0.25, 0.5, 1, 1.25), function(x) dec(dif_en(x)$dif_con_pct, 1), "")),
   "", R.version.string)
 writeLines(res, file.path(out, "resultados_VCEIE.txt"))
 writeLines(capture.output(sessionInfo()), file.path(out, "sessionInfo.txt"))

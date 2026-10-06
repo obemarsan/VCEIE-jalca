@@ -1,10 +1,10 @@
 # VCEIE-jalca — serie de entrada y código
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23104526.svg)](https://doi.org/10.5281/zenodo.23104526)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23104525.svg)](https://doi.org/10.5281/zenodo.23104525)
 
 Código en R que reproduce íntegramente los resultados, las tablas y las figuras del manuscrito
 
-> **Modelamiento paramétrico densidad–área para la valoración económica de ecosistemas: propuesta metodológica y prueba de concepto con la avifauna de la jalca, Perú** (enviado a *Ecosistemas*, AEET)
+> **Modelo paramétrico densidad–área para valorar ecosistemas: prueba de concepto con la avifauna de la jalca, Perú** (versión para la *Revista Peruana de Biología*)
 
 El trabajo propone un procedimiento de valoración y lo aplica de forma **ilustrativa**. La serie densidad–superficie (`datos_VCEIE.csv`) es la entrada del modelo y no constituye un inventario faunístico. Los parámetros de `params_VCEIE.csv` (capacidad de carga, individuos de referencia y precios), la fracción de evaluación (2/3), el área (8218.23 ha), la frecuencia (2 por año) y el factor de representatividad (0.76) son **supuestos de escenario**. Su influencia se cuantifica con un análisis de sensibilidad local y un análisis Monte Carlo.
 
@@ -16,7 +16,7 @@ La Figura 1 (mapa de ubicación) se genera con `figura1_mapa.R` a partir de los 
 P = M / (1 + A · exp(−k · S))          sigmoide de saturación densidad–área
 ln(M/P − 1) = ln A − k·S               linealización (M fijado a priori; MCO estima A y k)
 S* = ln(A)/k                           superficie de inflexión (P = M/2)
-Q    = P(f·Smáx) · (f·Smáx/10 000) · n             cuenta física (individuos equivalentes), f = 2/3
+Q    = P(f·Smáx) · (f·Smáx/10000) · n             cuenta física (individuos equivalentes), f = 2/3
 VEIE = Q · precio                                  cuenta monetaria
 VECE_bruto = ΣVEIE · área · frecuencia;   VECE_100 = VECE_bruto / factor
 ```
@@ -49,15 +49,16 @@ Rscript figura1_mapa.R --shp=<carpeta_INEI> --lat=-7.18278 --lon=-78.17033
 Rscript grupos_tamano_VCEIE.R --gbif=<lista_GBIF>.csv --avonet="AVONET Supplementary dataset 1.xlsx"
 ```
 
-La lista de GBIF (formato *Species list*, 250 especies, 14 016 registros) se descarga desde https://doi.org/10.15468/dl.m2ggby; AVONET, desde el material suplementario de Tobias et al. (2022). Ninguno se redistribuye aquí. Las 5 equivalencias de nombres resueltas a mano van en `revisar_manual_resuelto.csv`, en la misma carpeta que la lista de GBIF.
+La lista de GBIF (formato *Species list*, 250 especies, 14016 registros) se descarga desde https://doi.org/10.15468/dl.m2ggby; AVONET, desde el material suplementario de Tobias et al. (2022). Ninguno se redistribuye aquí. Las 5 equivalencias de nombres resueltas a mano van en `revisar_manual_resuelto.csv`, en la misma carpeta que la lista de GBIF.
 
-Genera en `outputs/` (formato ECOSISTEMAS: punto decimal, 600 ppp, 19 cm de ancho, PNG y TIFF):
+Genera en `outputs/` (formato RPB: punto decimal, cifras sin separador de millares; figuras de 15 cm de ancho en PDF editable y PNG de 600 ppp):
 
 - `Figura1_mapa_ubicacion`: ubicación del polígono (requiere shapefiles del INEI).
 - `Figura2_masa_corporal`: masa corporal de las 162 especies de hábitats abiertos y cortes de 50 g y 500 g.
 - `Figura3_ajuste_dPdS`: ajuste densidad–área (A–C) y tasa de cambio dP/dS (D–F) de los tres grupos.
 - `Figura4_sensibilidad`: tornado de la sensibilidad local (±20 %).
-- `Tablas_VCEIE.xlsx`: Tabla S1 (serie de entrada), Tabla 2 (parámetros, IC 95 %, cuenta física) y anexos (valoración, sensibilidad, residuos, Monte Carlo).
+- `Figura5_comparacion`: VECE al 100 % según la fracción evaluada con densidad de saturación, lineal y constante (A) y diferencia relativa frente a la saturación (B).
+- `Tablas_VCEIE.xlsx`: Tabla S1 (serie de entrada), Tabla 2 (parámetros, IC 95 %, cuenta física), Tabla 3 (comparación de la forma del modelo) y anexos (valoración, sensibilidad, curva de la Figura 5, residuos, Monte Carlo).
 - `Tablas_grupos_tamano.xlsx`: Tabla 1 (grupos de tamaño) y anexos (criterios, especies, revisión de nombres).
 - `resultados_VCEIE.txt` y `sessionInfo.txt`.
 
@@ -71,9 +72,10 @@ Genera en `outputs/` (formato ECOSISTEMAS: punto decimal, 600 ppp, 19 cm de anch
 
 - Cuenta física total: 66.816 individuos equivalentes por ha.
 - Grupos de tamaño (162 especies de hábitats abiertos): 94 pequeñas, 51 medianas, 17 grandes.
-- VECE bruto: S/ 8 065 376.56 por año. **VECE al 100 %: S/ 10 612 337.58 por año.**
-- Monte Carlo (10 000 iteraciones, semilla 2026): mediana de S/ 9 984 106.94; percentiles 2.5–97.5 de S/ 5 578 618.05 a 16 552 403.03.
+- VECE bruto: S/ 8065376.56 por año. **VECE al 100 %: S/ 10612337.58 por año.**
+- Monte Carlo (10000 iteraciones, semilla 2026): mediana de S/ 9984106.94; percentiles 2.5–97.5 de S/ 5578618.05 a 16552403.03.
 - Parámetros más influyentes: la fracción de evaluación (ρ = 0.843) y el factor de representatividad (ρ = −0.392).
+- Comparación de la forma del modelo (f = 2/3): la saturación ajusta mejor que la recta en los tres grupos (AIC −4.41, −9.95 y −16.22 frente a 2.62, 2.37 y 2.24). Con densidad lineal el VECE al 100 % es S/ 9492500.87 (−10.6 %); con densidad constante, S/ 7681341.40 (−27.6 %). Fuera de la serie (f = 1.25) la recta sobrestima en 34.4 %.
 
 ## Licencia
 
@@ -81,4 +83,4 @@ El código se distribuye bajo licencia MIT (ver `LICENSE`). La serie de entrada 
 
 ## Cómo citar
 
-> Marín-Machuca, O., Daga López, R. A., Vargas Ayala, J., Alvarado Zambrano, F. A., Cabeza-Molina, L. F., Vértiz Osores, J. J., Cucho Flores, R. R. y Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v2.1.2) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23104526
+> Marín-Machuca, O., Daga López, R. A., Vargas Ayala, J., Alvarado Zambrano, F. A., Cabeza-Molina, L. F., Vértiz Osores, J. J., Cucho Flores, R. R. y Marín-Sánchez, O. (2026) *VCEIE-jalca: serie de entrada y código para la valoración densidad–área de la fauna voladora del ecosistema jalca* (versión v3.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23104525 (DOI de concepto; resuelve a la última versión)

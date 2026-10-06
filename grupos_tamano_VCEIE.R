@@ -23,7 +23,7 @@
 #   revisar_manual.csv           nombres sin coincidencia exacta en AVONET
 #   resumen_grupos.csv           especies y masa mediana por grupo
 #   Tablas_grupos_tamano.xlsx    Tabla 1 del manuscrito + anexos (resumen, especies, nombres)
-#   Figura2_masa_corporal.png/.tiff  (especies de hábitats abiertos)
+#   Figura2_masa_corporal.pdf/.png  (especies de hábitats abiertos; PDF editable, 15 cm)
 # =============================================================================
 suppressPackageStartupMessages({
   for (p in c("readxl", "ggplot2", "scales", "writexl"))
@@ -130,7 +130,7 @@ write.csv(resumen, file.path(opt$out, "resumen_grupos.csv"), row.names = FALSE)
 
 # Tabla 1 del manuscrito y anexos en Excel
 t3 <- resumen[resumen$criterio == "grupo_fijo" & resumen$especies_incluidas == "abiertos", ]
-dec1 <- function(x) formatC(x, format = "f", digits = 1, big.mark = "")   # punto decimal (ECOSISTEMAS)
+dec1 <- function(x) formatC(x, format = "f", digits = 1, big.mark = "")   # punto decimal (RPB)
 T3 <- data.frame(
   Grupo = c("1 (grande)", "2 (mediano)", "3 (pequeño)"),
   `Masa (g)` = c(paste0(">= ", C2), paste0(C1, "–", C2), paste0("< ", C1)),
@@ -147,26 +147,24 @@ ref <- c("Coragyps atratus", "Falco sparverius", "Spinus magellanicus")
 refs <- lista[lista$especie %in% ref, c("especie", "Mass", "grupo_fijo", "grupo_tercil")]
 
 ## ---- 4. Figura ------------------------------------------------------------------
-dec <- function(x, d = 0) ifelse(abs(x) >= 10000, formatC(x, format = "f", digits = d, big.mark = " "),
-                                  formatC(x, format = "f", digits = d, big.mark = ""))
+dec <- function(x, d = 0) formatC(x, format = "f", digits = d, big.mark = "")   # cifras juntas (RPB)
 g9 <- ggplot(lista[ok & lista$habitat_abierto, ], aes(Mass)) +
   geom_histogram(bins = 30, fill = "grey75", colour = "grey35", linewidth = 0.2) +
   geom_vline(xintercept = c(C1, C2), linetype = "dashed", colour = "grey20") +
   geom_point(data = refs, aes(x = Mass, y = 0), shape = 25, size = 3,
              fill = "#D55E00", colour = "black", inherit.aes = FALSE) +
   geom_text(data = refs, aes(x = Mass, y = 0, label = especie), angle = 90, hjust = -0.15,
-            vjust = 0.4, size = 2.8, fontface = "italic", inherit.aes = FALSE) +
+            vjust = 0.4, size = 2.4, fontface = "italic", inherit.aes = FALSE) +
   annotate("text", x = sqrt(c(min(lista$Mass[ok]) * C1, C1 * C2, C2 * max(lista$Mass[ok]))),
-           y = Inf, vjust = 1.6, size = 3.2, label = c("Pequeño", "Mediano", "Grande")) +
+           y = Inf, vjust = 1.6, size = 2.8, label = c("Pequeño", "Mediano", "Grande")) +
   scale_x_log10(labels = function(x) dec(x, 0)) +
   labs(x = "Masa corporal (g, escala logarítmica)", y = "Número de especies") +
-  theme_bw(base_size = 11) + theme(panel.grid.minor = element_blank())
-for (ext in c("png", "tiff")) {
-  a <- list(filename = file.path(opt$out, paste0("Figura2_masa_corporal.", ext)), plot = g9,
-            width = 19, height = 10, units = "cm", dpi = 600, bg = "white")
-  if (ext == "tiff") a$compression <- "lzw"
-  do.call(ggsave, a)
-}
+  theme_bw(base_size = 9) + theme(panel.grid.minor = element_blank())
+# PDF vectorial editable (RPB) + PNG 600 ppp para el manuscrito; ancho 15 cm
+ggsave(file.path(opt$out, "Figura2_masa_corporal.pdf"), g9, width = 15, height = 8,
+       units = "cm", device = cairo_pdf, bg = "white")
+ggsave(file.path(opt$out, "Figura2_masa_corporal.png"), g9, width = 15, height = 8,
+       units = "cm", dpi = 600, bg = "white")
 
 ## ---- 5. Resumen en pantalla ------------------------------------------------------
 cat("Especies en la lista GBIF:", nrow(lista), "\n")
